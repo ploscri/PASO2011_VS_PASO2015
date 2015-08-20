@@ -90,7 +90,18 @@
 			margin-right:110px;
 			float:right;
 		}
-
+	
+		.texto {
+			width: 59px;
+		    height: 23px;
+		    margin-left: 300px;
+		    font-size: 15px;
+		    color: white;
+		    padding: 8px 13px 0px 10px;
+		    border-radius: 100px;
+		    text-align: center;
+		}
+	
 		</style>
 </head>
 <body>
@@ -230,10 +241,19 @@
         
       country
         .on("mouseover", function(d,i) { 
-        		return d3.select(this).classed("over", true),
-        		d3.select(".texto").html(d.dif)
+        		return d3.select(this)
+        			     .classed("over", true),
+        			   d3.select(".texto")
+        		         .html(d.dif + "%")
+        		         .style("background", "#000000")
         		;})
-        .on("mouseout",  function(d,i) { return d3.select(this).classed("over", false); })
+        .on("mouseout",  function(d,i) { return d3.select(this)
+        										  .classed("over", false);
+        										d3.select(".texto")
+        		         						  .style("opacity", 0)
+        										  ; 
+        										   })
+        										   
         //.on("click",  function(d,i) { return d3.select(this).classed("over", true); })
         ;
 
