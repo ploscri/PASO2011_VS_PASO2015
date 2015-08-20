@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Diferencia de votos en el FPV entre PASO 2011 y 2015</title>
+  <script src="http://mbostock.github.com/d3/d3.v2.min.js?2.8.1"></script>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+ 	<style>
+		body {
+			color: #444;
+			background: #f3f3f3;
+			font: normal 9px  Arial, Helvetica, sans-serif;
+			margin: 2em;
+		}
+		header {
+			margin: 0 0 35px 10px;
+			width: 640px;
+			position: relative;
+		}
+		h1 {
+			font-size: 24px;
+			font-weight: normal;
+			text-shadow: #fff 0 1px 0;
+			margin: 0 0 0 0;
+			padding: 0;
+		}
+		small {
+			color: #a3a3a3;
+			font-size: 12px;
+			position: absolute;
+			bottom: -2.8em;
+			left: 0;
+		}
+		a {
+			color: #a3a3a3;
+		}
+
+		span.label_year:hover {
+			cursor: ew-resize;
+			
+		}
+
+		text.label {
+			fill: #444;
+		}
+		text.label.start {
+			text-anchor: end;
+		}
+		line.slope {
+			stroke: #66CFFF;
+			stroke-width: 2;
+		}
+
+		.missing text.label {
+			display: none;
+		}
+		.missing line.slope {
+			display: none;
+		}
+
+		.over text.label {
+			fill: black;
+			font-weight:bolder;
+			cursor: pointer;
+			
+		}
+		
+		.over line.slope {
+			stroke: #000;
+			stroke-width: 2;
+			opacity:1;
+		}
+		
+		tspan {
+			font-weight:bold;
+			}
+			
+		h2 {
+			font-size:25px;
+			margin-top:25px;
+			font-weight:lighter;
+			color:#A3A3A3;
+		}	
+		
+		#primero {
+			float:left;
+			margin-left:70px;
+		}	
+			
+		#segundo {
+			margin-right:110px;
+			float:right;
+		}
+
+		</style>
+</head>
+<body>
+  <header>
+    <h1>
+    Diferencia de votos en el FPV entre PASO 2011 y 2015
+    </h1>
+    <h2 id="primero">2011</h2>
+    <h2 id="segundo">2015</h2>
+  </header>
+  <div id="chart"> 
+  	<div class="texto"> </div>
+  	
+  </div>
+</body>
+
+<script>
+  d3.csv("elecciones.csv", function(csv) {
+  	//var csv = cs.slice(1,50);
+    data = csv;
+    // console.log("CSV", csv);
+
+    var
+        // Extract years from the dataset
+        years     = d3.keys(csv[0]).filter( function(d) { return d.match(/^\d/) }), // Return numerical keys
+        // Extract names of countries from the dataset
+        countries = csv.map( function(d) { return d["Provincia"] }),
+        // Return true for countries without start/end values
+        missing   = function(d) { return !d.start || !d.end; },
+
+        font_size = 11,
+        margin    = 20,
+        width     = 640,
+        height    = 2*countries.length * font_size + margin,
+
+        chart     = d3.select("#chart").append("svg")
+                   .attr("width",  width)
+                   .attr("height", height*2);
+
+
+    // Scales
+    var slope = d3.scale.linear()
+                  .domain( [83, 29] )
+                  .range([margin, height]);
+    var year_scale = d3.scale.linear()
+                       .domain([ parseInt(d3.first(years)), parseInt(d3.last(years)) ])
+                       .clamp(true);
+
+    // Update the chart graphics based on new data for selected year
+    var update = function() {
+      var
+        // Extract country names and start/end values from the dataset
+        data      = csv
+                      .map( function(d, i) {
+                        var r = {
+                          label: d["Provincia"],
+                          start: d3.round(parseFloat(d['2011']),3),
+                          end:   d3.round(parseFloat(d['2015']),3),
+                          dif:   d3.round(parseFloat(d['Diferencia']),1)
+                                             };
+                        // console.log(r);
+                        return r;
+                      })
+                      // Sort in descending order
+                      .sort( function(a,b) {
+                        return d3.max([a.start, a.end]) > d3.max([b.start, b.end]) ?
+                               -1 :
+                               d3.max([a.start, a.end]) < d3.max([b.start, b.end]) ?
+                               1 : 0;
+                      } ),
+        // Compute the minimum and maximum value in the dataset
+        extent    = [ csv.map(function(d) {
+                                return d3.entries(d)
+                                         .filter(function(d) { return d.key.match(/^\d/); })
+                                         .map(function(d) { return d.value; })
+                              }) ];
+
+	  //Go through the list of countries in order, adding additional space as necessary.
+      var min_h_spacing = 1.2 * font_size, // 1.2 is standard font height:line space ratio
+      	  previousY = 0,
+      	  thisY,
+      	  additionalSpacing;
+      //Preset the Y positions (necessary only for the lower side)
+      //These are used as suggested positions.
+      data.forEach(function(d) {
+      	d.startY = slope(d.start);
+      	d.endY = slope(d.end);
+      });
+      //Loop over the higher side (right) values, adding space to both sides if there's a collision
+      data
+      	.sort(function(a,b) {
+      		if (a.end == b.end) return 0;
+      		return (a.end < b.end) ? -1 : +1;
+      	})
+	    .forEach(function(d) {
+	      	thisY = d.endY; //position "suggestion"
+	      	additionalSpacing = d3.max([0, d3.min([(min_h_spacing - (thisY - previousY)), min_h_spacing])]);
+	
+	      	//Adjust all Y positions lower than this end's original Y position by the delta offset to preserve slopes:
+	      	data.forEach(function(dd) {
+	      		if (dd.startY >= d.endY) dd.startY += additionalSpacing;
+	      		if (dd.endY >= d.endY) dd.endY += additionalSpacing; 
+	      	});
+	      	
+	      	previousY = thisY;
+	    });
+
+      //Loop over the lower side (left) values, adding space to both sides if there's a collision
+      previousY = 0;
+      data
+      .sort(function(a,b) {
+      	 if (a.startY == b.startY) return 0;
+      	 return (a.startY < b.startY) ? -1 : +1;
+      })
+      .forEach(function(d) {
+      	thisY = d.startY; //position "suggestion"
+      	additionalSpacing = d3.max([0, d3.min([(min_h_spacing - (thisY - previousY)), min_h_spacing])]);
+
+      	//Adjust all Y positions lower than this start's original Y position by the delta offset to preserve slopes:
+      	data.forEach(function(dd) {
+      		if (dd.endY >= d.startY) dd.endY += additionalSpacing;
+      		if (dd.startY >= d.startY) dd.startY += additionalSpacing;
+      	});      	
+      	previousY = thisY;
+      });
+
+      // Countries
+      var country = chart.selectAll("g.country")
+                      .data( data );
+      country
+        .enter()
+        .append("g")
+        .attr("class", "country");
+
+      country
+        .classed("missing", function(d) { return missing(d); });
+        
+      country
+        .on("mouseover", function(d,i) { 
+        		return d3.select(this).classed("over", true),
+        		d3.select(".texto").html(d.dif)
+        		;})
+        .on("mouseout",  function(d,i) { return d3.select(this).classed("over", false); })
+        //.on("click",  function(d,i) { return d3.select(this).classed("over", true); })
+        ;
+
+      // ** Left column
+      var left_column = country
+                          .selectAll("text.label.start")
+                            .data( function(d) { return [d]; } );
+          left_column
+           .enter()
+            .append("text")
+            .classed("label start", true)
+            .attr("xml:space", "preserve")
+            .style("font-size", font_size)
+            .attr("x", 140)
+            .attr("y", 0);
+
+          left_column
+            .attr("y", function(d,i) { return d.startY; })
+            .text(function(d) { return d.label+ "   ";});
+            
+          left_column  
+            .append("tspan")
+            .text( function(d) { return d3.round(d.start, 2) + "%";}
+            	);
+
+      // ** Right column
+      var right_column = country
+                          .selectAll("text.label.end")
+                            .data( function(d) { return [d]; } );
+
+          right_column
+           .enter()
+            .append("text")
+            .classed("label end", true)
+            .attr("xml:space", "preserve")
+            .style("font-size", font_size)
+            .attr("x", width-140)
+            .attr("y", 0);
+
+          right_column
+            .attr("y", function(d,i) { return d.endY; })
+            .text(function(d) { return d3.round(d.end, 2) + "%   " + d.label; });
+
+
+      // ** Slope lines
+      var line = country
+                    .selectAll("line.slope")
+                      .data( function(d) { return [d]; } );
+          line
+           .enter()
+            .append("line")
+            .attr("x1", 150)
+            .attr("x2", width-150)
+            .attr("opacity", 0)
+            .attr("y1", 0)
+            .attr("y2", 0);
+
+          line
+            .classed("slope", function(d) { return d.start || d.end; })
+            .attr("opacity", function (d) {
+            	if (d.dif < -15) {return 1;} else if (d.dif < -10) {return 0.5;} else {return 0.2;} ;
+            	})
+            	
+            .attr("y1", function(d,i) { return d.start && d.end ? Math.round( d.startY - font_size/2 + 2) : null; })
+            .attr("y2", function(d,i) { return d.start && d.end ? Math.round( d.endY   - font_size/2 + 2) : null; });
+
+
+      return chart;
+    };
+
+    
+
+    return update( d3.first(years), d3.last(years) );
+  }, {});
+</script>
+
+</html>
