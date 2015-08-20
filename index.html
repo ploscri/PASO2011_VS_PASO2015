@@ -94,9 +94,10 @@
 		.texto {
 			width: 59px;
 		    height: 23px;
-		    margin-left: 300px;
+		    margin-left: 280px;
+		    margin-top: -13px;
 		    font-size: 15px;
-		    color: white;
+		    color: #F3F3F3;
 		    padding: 8px 13px 0px 10px;
 		    border-radius: 100px;
 		    text-align: center;
@@ -248,9 +249,9 @@
         		         .style("background", "#000000")
         		;})
         .on("mouseout",  function(d,i) { return d3.select(this)
-        										  .classed("over", false);
+        										  .classed("over", false),
         										d3.select(".texto")
-        		         						  .style("opacity", 0)
+        		         						  .style("background","#F3F3F3")
         										  ; 
         										   })
         										   
